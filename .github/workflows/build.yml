@@ -1,0 +1,90 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # openresty
+  OPENRESTY_VERSION: 1.27.1.1
+  OPENRESTY_PREFIX: /usr/local/apisix-unofficial-release
+  OPENRESTY_CC_OPT: '-O2 -DNGX_LUA_ABORT_AT_PANIC -I/usr/local/openresty/zlib/include -I/usr/local/openresty/pcre2/include -I/usr/local/openresty/openssl3/include'
+  OPENRESTY_LD_OPT: '-Wl,-rpath,/usr/local/openresty/luajit/lib:/usr/local/openresty/zlib/lib:/usr/local/openresty/pcre2/lib:/usr/local/openresty/openssl3/lib -L/usr/local/openresty/zlib/lib -L/usr/local/openresty/pcre2/lib -L/usr/local/openresty/openssl3/lib'
+  OPENRESTY_LUAJIT_XCFLAGS: '-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
+  # lua module
+  LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
+  LUA_RESTY_EVENTS_MODULE_VERSION: 0.3.1
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    name: build
+    steps:
+      - name: Set up apt repository for openresty
+        run: |
+          sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates lsb-release
+          wget -O - https://openresty.org/package/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list > /dev/null
+          sudo apt-get update
+      - name: Install openresty lib package and dev package
+        run: |
+          sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev openresty-pcre2 openresty-pcre2-dev openresty-zlib openresty-zlib-dev
+      - name: Download module
+        run: |
+          sudo chown -R $(id -u):$(id -g) /usr/local/src/
+          cd /usr/local/src/
+          git clone --depth=1 -b ${LUA_VAR_NGINX_MODULE_VERSION} https://github.com/api7/lua-var-nginx-module lua-var-nginx-module-${LUA_VAR_NGINX_MODULE_VERSION}
+          git clone --depth=1 -b ${LUA_RESTY_EVENTS_MODULE_VERSION} https://github.com/Kong/lua-resty-events.git lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}
+      - name: Download openresty and build
+        run: |
+          wget --no-check-certificate https://openresty.org/download/openresty-$OPENRESTY_VERSION.tar.gz
+          tar -zxvpf openresty-$OPENRESTY_VERSION.tar.gz -C /usr/local/src/ > /dev/null
+          cd /usr/local/src/openresty-$OPENRESTY_VERSION || exit 1
+          ./configure \
+            --prefix="$OPENRESTY_PREFIX" \
+            --with-cc-opt="$OPENRESTY_CC_OPT" \
+            --with-ld-opt="$OPENRESTY_LD_OPT" \
+            --with-luajit-xcflags="$OPENRESTY_LUAJIT_XCFLAGS" \
+            --add-module=../lua-var-nginx-module-$LUA_VAR_NGINX_MODULE_VERSION \
+            --add-module=../lua-resty-events-$LUA_RESTY_EVENTS_MODULE_VERSION \
+            --with-poll_module \
+            --with-pcre-jit \
+            --without-http_rds_json_module \
+            --without-http_rds_csv_module \
+            --without-lua_rds_parser \
+            --with-stream \
+            --with-stream_ssl_module \
+            --with-stream_ssl_preread_module \
+            --with-http_v2_module \
+            --with-http_v3_module \
+            --without-mail_pop3_module \
+            --without-mail_imap_module \
+            --without-mail_smtp_module \
+            --with-http_stub_status_module \
+            --with-http_realip_module \
+            --with-http_addition_module \
+            --with-http_auth_request_module \
+            --with-http_secure_link_module \
+            --with-http_random_index_module \
+            --with-http_gzip_static_module \
+            --with-http_sub_module \
+            --with-http_dav_module \
+            --with-http_flv_module \
+            --with-http_mp4_module \
+            --with-http_slice_module \
+            --with-http_gunzip_module \
+            --with-threads \
+            --with-compat \
+            -j`nproc`
+          make -j`nproc`
+          sudo mkdir -p $OPENRESTY_PREFIX
+          sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX
+          make install
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ github.ref_name }}-${{ runner.os }}-amd64
+          path: /usr/local/apisix-unofficial-release/*
