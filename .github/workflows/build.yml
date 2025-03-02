@@ -11,8 +11,8 @@ env:
   # openresty
   OPENRESTY_VERSION: 1.27.1.1
   OPENRESTY_PREFIX: /usr/local/apisix-unofficial-release
-  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I$OPENRESTY_PREFIX/zlib/include -I$OPENRESTY_PREFIX/pcre2/include -I$OPENRESTY_PREFIX/openssl3/include
-  OPENRESTY_LD_OPT: -Wl,-rpath,$OPENRESTY_PREFIX/luajit/lib:$OPENRESTY_PREFIX/zlib/lib:$OPENRESTY_PREFIX/pcre2/lib:$OPENRESTY_PREFIX/openssl3/lib -L$OPENRESTY_PREFIX/zlib/lib -L$OPENRESTY_PREFIX/pcre2/lib -L$OPENRESTY_PREFIX/openssl3/lib
+  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I/usr/local/apisix-unofficial-release/zlib/include -I/usr/local/apisix-unofficial-release/pcre2/include -I/usr/local/apisix-unofficial-release/openssl3/include
+  OPENRESTY_LD_OPT: -Wl,-rpath,/usr/local/apisix-unofficial-release/luajit/lib:/usr/local/apisix-unofficial-release/zlib/lib:/usr/local/apisix-unofficial-release/pcre2/lib:/usr/local/apisix-unofficial-release/openssl3/lib -L/usr/local/apisix-unofficial-release/zlib/lib -L/usr/local/apisix-unofficial-release/pcre2/lib -L/usr/local/apisix-unofficial-release/openssl3/lib
   OPENRESTY_LUAJIT_XCFLAGS: '-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
   # lua module
   LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
@@ -114,8 +114,22 @@ jobs:
           git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
           cd apisix-${APISIX_VERSION}
           $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
+      - name: Build deb package
+        run: |
+          mkdir -p pkg/usr/local
+          mkdir -p pkg/DEBIAN
+          sudo chown -R $(id -u):$(id -g) pkg
+          cp -r $OPENRESTY_PREFIX pkg/usr/local
+          cat << EOF > pkg/DEBIAN/control
+          Package: apisix-unofficial-release
+          Version: 0.1
+          Maintainer: yuweizzz
+          Architecture: amd64
+          Description: apisix unofficial release
+          EOF
+          dpkg-deb -Z xz --build pkg apisix-unofficial-release_0.1_amd64.deb
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: artifact-${{ github.ref_name }}-${{ runner.os }}-amd64
-          path: $OPENRESTY_PREFIX/*
+          path: ./*.deb
