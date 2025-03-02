@@ -39,13 +39,20 @@ jobs:
           sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev \
             openresty-pcre2 openresty-pcre2-dev \
             openresty-zlib openresty-zlib-dev \
-            openresty-pcre openresty-pcre-dev
+            openresty-pcre openresty-pcre-dev \
+            libyaml-0-2 libyaml-dev
           sudo mkdir -p $OPENRESTY_PREFIX
           sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/zlib $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/pcre $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/pcre2 $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/openssl3 $OPENRESTY_PREFIX
+          mkdir -p $OPENRESTY_PREFIX/libyaml
+          mkdir -p $OPENRESTY_PREFIX/libyaml/lib
+          mkdir -p $OPENRESTY_PREFIX/libyaml/include
+          sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX/libyaml
+          sudo cp /usr/lib/x86_64-linux-gnu/libyaml* $OPENRESTY_PREFIX/libyaml/lib
+          sudo cp /usr/include/yaml* $OPENRESTY_PREFIX/libyaml/include
       - name: Download module
         run: |
           sudo chown -R $(id -u):$(id -g) /usr/local/src/
@@ -108,6 +115,8 @@ jobs:
           $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_INCDIR $OPENRESTY_PREFIX/openssl3/include
           $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_LIBDIR $OPENRESTY_PREFIX/pcre/lib/
           $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $OPENRESTY_PREFIX/pcre/include/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_LIBDIR $OPENRESTY_PREFIX/libyaml/lib/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $OPENRESTY_PREFIX/libyaml/include/
       - name: Download apisix and install
         run: |
           cd $OPENRESTY_PREFIX
