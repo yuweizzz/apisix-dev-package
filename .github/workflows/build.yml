@@ -12,14 +12,16 @@ env:
   OPENRESTY_VERSION: 1.27.1.1
   OPENRESTY_PREFIX: /usr/local/apisix-unofficial-release
   OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I$OPENRESTY_PREFIX/zlib/include -I$OPENRESTY_PREFIX/pcre2/include -I$OPENRESTY_PREFIX/openssl3/include
-  OPENRESTY_LD_OPT: -Wl,-rpath,$OPENRESTY_PREFIX/luajit/lib:$OPENRESTY_PREFIX/zlib/lib:$OPENRESTY_PREFIX/pcre2/lib:$OPENRESTY_PREFIX/openssl3/lib -L$OPENRESTY_PREFIX/zlib/lib -L$OPENRESTY_PREFIX/pcre2/lib -L$OPENRESTY_PREFIX/openssl3/lib'
+  OPENRESTY_LD_OPT: -Wl,-rpath,$OPENRESTY_PREFIX/luajit/lib:$OPENRESTY_PREFIX/zlib/lib:$OPENRESTY_PREFIX/pcre2/lib:$OPENRESTY_PREFIX/openssl3/lib -L$OPENRESTY_PREFIX/zlib/lib -L$OPENRESTY_PREFIX/pcre2/lib -L$OPENRESTY_PREFIX/openssl3/lib
   OPENRESTY_LUAJIT_XCFLAGS: '-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
   # lua module
   LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
   LUA_RESTY_EVENTS_MODULE_VERSION: 0.3.1
   # luarocks
-  LUAROCKS_PREFIX: $OPENRESTY_PREFIX/luarocks
+  LUAROCKS_PREFIX: /usr/local/apisix-unofficial-release/luarocks
   LUAROCKS_VERSION: 3.11.1
+  # apisix
+  APISIX_VERSION: master
 
 jobs:
   build:
@@ -34,10 +36,14 @@ jobs:
           sudo apt-get update
       - name: Install openresty lib package and dev package
         run: |
-          sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev openresty-pcre2 openresty-pcre2-dev openresty-zlib openresty-zlib-dev
+          sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev \
+            openresty-pcre2 openresty-pcre2-dev \
+            openresty-zlib openresty-zlib-dev \
+            openresty-pcre openresty-pcre-dev
           sudo mkdir -p $OPENRESTY_PREFIX
           sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/zlib $OPENRESTY_PREFIX
+          sudo cp -r /usr/local/openresty/pcre $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/pcre2 $OPENRESTY_PREFIX
           sudo cp -r /usr/local/openresty/openssl3 $OPENRESTY_PREFIX
       - name: Download module
@@ -95,13 +101,21 @@ jobs:
           mkdir /usr/local/src/luarocks
           tar -zxvpf v$LUAROCKS_VERSION.tar.gz -C /usr/local/src/luarocks > /dev/null
           cd /usr/local/src/luarocks/luarocks-$LUAROCKS_VERSION
-          ./configure --prefix=$LUAROCKS_PREFIX --with-lua=$OPENRESTY_PREFIX/luajit/
+          ./configure --prefix=/usr/local/apisix-unofficial-release/luarocks --with-lua=/usr/local/apisix-unofficial-release/luajit/
           make
           make install
-          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_LIBDIR /usr/local/openresty/openssl3/lib
-          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_INCDIR /usr/local/openresty/openssl3/include
+          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_LIBDIR $OPENRESTY_PREFIX/openssl3/lib
+          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_INCDIR $OPENRESTY_PREFIX/openssl3/include
+          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_LIBDIR $OPENRESTY_PREFIX/pcre/lib/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $OPENRESTY_PREFIX/pcre/include/
+      - name: Download apisix and install
+        run: |
+          cd $OPENRESTY_PREFIX
+          git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
+          cd apisix-${APISIX_VERSION}
+          $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: artifact-${{ github.ref_name }}-${{ runner.os }}-amd64
-          path: /usr/local/apisix-unofficial-release/*
+          path: $OPENRESTY_PREFIX/*
