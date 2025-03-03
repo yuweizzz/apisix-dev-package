@@ -117,12 +117,16 @@ jobs:
           $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $OPENRESTY_PREFIX/pcre/include/
           $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_LIBDIR $OPENRESTY_PREFIX/libyaml/lib/
           $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $OPENRESTY_PREFIX/libyaml/include/
+      - name: Checkout patch
+        uses: actions/checkout@v4
       - name: Download apisix and install
         run: |
+          PATCH_FILE=$(realpath apisix-unofficial-release.patch)
           cd $OPENRESTY_PREFIX
           git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
           cd apisix-${APISIX_VERSION}
           $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
+          patch -p1 < $PATCH_FILE
       - name: Build deb package
         run: |
           mkdir -p pkg/usr/local
@@ -142,3 +146,22 @@ jobs:
         with:
           name: artifact-${{ github.ref_name }}-${{ runner.os }}-amd64
           path: ./*.deb
+
+  test:
+    needs: [build]
+    runs-on: ubuntu-20.04
+    name: test
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+      - name: Install deb package
+        run: |
+          sudo dpkg -i artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/apisix-unofficial-release_0.1_amd64.deb
+      - name: Install test-nginx and run test
+        run: |
+          sudo apt install cpanminus
+          cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
+          sudo cpanm --notest Test::Nginx IPC::Run > build.log 2>&1 || (cat build.log && exit 1)
+          git clone https://github.com/openresty/test-nginx.git
+          export PATH=/usr/local/apisix-unofficial-release/nginx/sbin/nginx:$PATH
+          prove -Itest-nginx/lib -r t/plugin/ocsp-stapling.t

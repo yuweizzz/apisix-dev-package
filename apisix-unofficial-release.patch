@@ -1,0 +1,44 @@
+diff --git a/apisix/cli/apisix.lua b/apisix/cli/apisix.lua
+index 079691f..d6c4446 100755
+--- a/apisix/cli/apisix.lua
++++ b/apisix/cli/apisix.lua
+@@ -23,7 +23,7 @@ if not find_pos_end then
+     pkg_path_org = pkg_path_org .. ";"
+ end
+ 
+-local apisix_home = "/usr/local/apisix"
++local apisix_home = "/usr/local/apisix-unofficial-release/apisix-master"
+ local pkg_cpath = apisix_home .. "/deps/lib64/lua/5.1/?.so;"
+                   .. apisix_home .. "/deps/lib/lua/5.1/?.so;"
+ local pkg_path_deps = apisix_home .. "/deps/share/lua/5.1/?.lua;"
+diff --git a/bin/apisix b/bin/apisix
+index f4c75fb..f8dee5f 100755
+--- a/bin/apisix
++++ b/bin/apisix
+@@ -28,21 +28,9 @@ else
+     APISIX_LUA=/usr/local/apisix/apisix/cli/apisix.lua
+ fi
+ 
+-# find the openresty
+-OR_BIN=$(command -v openresty || exit 1)
+-OR_EXEC=${OR_BIN:-'/usr/local/openresty-debug/bin/openresty'}
+-OR_VER=$(openresty -v 2>&1 | awk -F '/' '{print $2}' | awk -F '.' '{print $1 * 100 + $2}')
+-LUA_VERSION=$(lua -v 2>&1| grep -E -o  "Lua [0-9]+.[0-9]+")
++ROOT=/usr/local/apisix-unofficial-release
++LUAJIT_BIN="$ROOT"/luajit/bin/luajit
+ 
+-if [[ -e $OR_EXEC && "$OR_VER" -ge 119 ]]; then
+-    # OpenResty version is >= 1.19, use luajit by default
+-    ROOT=$(${OR_EXEC} -V 2>&1 | grep prefix | grep -Eo 'prefix=(.*)/nginx\s+--' | grep -Eo '/.*/')
+-    # find the luajit binary of openresty
+-    LUAJIT_BIN="$ROOT"/luajit/bin/luajit
+-
+-    # use the luajit of openresty
+-    echo "$LUAJIT_BIN $APISIX_LUA $*"
+-    exec $LUAJIT_BIN $APISIX_LUA $*
+-else
+-    echo "ERROR: Please check the version of OpenResty and Lua, OpenResty 1.19+ + LuaJIT is required for Apache APISIX."
+-fi
++# use the luajit of openresty
++echo "$LUAJIT_BIN $APISIX_LUA $*"
++exec $LUAJIT_BIN $APISIX_LUA $*
