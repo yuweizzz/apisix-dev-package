@@ -116,6 +116,7 @@ jobs:
             -j`nproc`
           make -j`nproc`
           make install
+          cp -r /usr/local/src/lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}/lualib/resty/events $OPENRESTY_PREFIX/lualib/resty/
       - name: Build from luarocks source and install
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
@@ -199,11 +200,24 @@ jobs:
       - name: Install deb package
         run: |
           sudo dpkg -i artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/apisix-unofficial-release_0.1_amd64.deb
-      - name: Install test-nginx and run test
+      - name: Install packages
         run: |
           sudo apt install cpanminus
+          ETCD_VERSION='3.5.4'
+          wget https://github.com/etcd-io/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
+          tar -xvf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
+          cd etcd-v${ETCD_VERSION}-linux-amd64
+          sudo cp -a etcd etcdctl /usr/bin/
+          sudo systemd-run --unit=etcd etcd
+      - name: Install test-nginx and run test
+        run: |
           cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
           sudo cpanm --notest Test::Nginx IPC::Run > build.log 2>&1 || (cat build.log && exit 1)
+          git submodule update --init --recursive t/toolkit/
           git clone https://github.com/openresty/test-nginx.git
+          export PATH=/usr/local/apisix-unofficial-release/bin:$PATH
           export PERL5LIB=.:$PERL5LIB
-          TEST_NGINX_BINARY=/usr/local/apisix-unofficial-release/bin/openresty prove -Itest-nginx/lib -r t/plugin/ocsp-stapling.t
+          export TEST_NGINX_BINARY=/usr/local/apisix-unofficial-release/bin/openresty
+          $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
+          $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
+          prove -Itest-nginx/lib -r t/plugin/hmac-auth.*
