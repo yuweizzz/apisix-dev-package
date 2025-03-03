@@ -28,13 +28,25 @@ jobs:
     runs-on: ubuntu-20.04
     name: build
     steps:
+      - name: Change owner
+        run: |
+          sudo chown $(id -u):$(id -g) /usr/local/
+      - name: Restore Openresty Cache
+        id: restore-openresty
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /usr/local/apisix-unofficial-release
+          key: ${{ runner.os }}-openresty-cache
       - name: Set up apt repository for openresty
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           sudo apt-get -y install --no-install-recommends wget gnupg ca-certificates lsb-release
           wget -O - https://openresty.org/package/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list > /dev/null
           sudo apt-get update
       - name: Install openresty lib package and dev package
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev \
             openresty-pcre2 openresty-pcre2-dev \
@@ -54,12 +66,14 @@ jobs:
           sudo cp /usr/lib/x86_64-linux-gnu/libyaml* $OPENRESTY_PREFIX/libyaml/lib
           sudo cp /usr/include/yaml* $OPENRESTY_PREFIX/libyaml/include
       - name: Download module
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           sudo chown -R $(id -u):$(id -g) /usr/local/src/
           cd /usr/local/src/
           git clone --depth=1 -b ${LUA_VAR_NGINX_MODULE_VERSION} https://github.com/api7/lua-var-nginx-module lua-var-nginx-module-${LUA_VAR_NGINX_MODULE_VERSION}
           git clone --depth=1 -b ${LUA_RESTY_EVENTS_MODULE_VERSION} https://github.com/Kong/lua-resty-events.git lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}
       - name: Download openresty and build
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           wget --no-check-certificate https://openresty.org/download/openresty-$OPENRESTY_VERSION.tar.gz
           tar -zxvpf openresty-$OPENRESTY_VERSION.tar.gz -C /usr/local/src/ > /dev/null
@@ -103,6 +117,7 @@ jobs:
           make -j`nproc`
           make install
       - name: Build from luarocks source and install
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           wget https://github.com/luarocks/luarocks/archive/refs/tags/v$LUAROCKS_VERSION.tar.gz
           mkdir /usr/local/src/luarocks
@@ -117,6 +132,14 @@ jobs:
           $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $OPENRESTY_PREFIX/pcre/include/
           $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_LIBDIR $OPENRESTY_PREFIX/libyaml/lib/
           $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $OPENRESTY_PREFIX/libyaml/include/
+      - name: Save Openresty Cache
+        id: save-openresty
+        uses: actions/cache/save@v4
+        if: steps.restore-openresty.outputs.cache-hit != 'true'
+        with:
+          path: |
+            /usr/local/apisix-unofficial-release
+          key: ${{ runner.os }}-openresty-cache
       - name: Checkout patch
         uses: actions/checkout@v4
       - name: Download apisix and install
@@ -125,8 +148,27 @@ jobs:
           cd $OPENRESTY_PREFIX
           git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
           cd apisix-${APISIX_VERSION}
-          $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
           patch -p1 < $PATCH_FILE
+      - name: Restore apisix deps
+        id: restore-apisix-deps
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /usr/local/apisix-unofficial-release/apisix-${{ env.APISIX_VERSION }}/deps
+          key: ${{ runner.os }}-apisix-deps-cache
+      - name: Download apisix deps
+        if: steps.estore-apisix-deps.outputs.cache-hit != 'true'
+        run: |
+          cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
+          $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
+      - name: Save apisix deps
+        id: save-apisix-deps
+        uses: actions/cache/save@v4
+        if: steps.restore-apisix-deps.outputs.cache-hit != 'true'
+        with:
+          path: |
+            /usr/local/apisix-unofficial-release/apisix-${{ env.APISIX_VERSION }}/deps
+          key: ${{ runner.os }}-apisix-deps-cache
       - name: Build deb package
         run: |
           mkdir -p pkg/usr/local
@@ -163,5 +205,5 @@ jobs:
           cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
           sudo cpanm --notest Test::Nginx IPC::Run > build.log 2>&1 || (cat build.log && exit 1)
           git clone https://github.com/openresty/test-nginx.git
-          export PATH=/usr/local/apisix-unofficial-release/nginx/sbin/nginx:$PATH
-          prove -Itest-nginx/lib -r t/plugin/ocsp-stapling.t
+          export PERL5LIB=.:$PERL5LIB
+          TEST_NGINX_BINARY=/usr/local/apisix-unofficial-release/bin/openresty prove -Itest-nginx/lib -r t/plugin/ocsp-stapling.t
