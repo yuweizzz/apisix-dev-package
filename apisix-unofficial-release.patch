@@ -24,7 +24,7 @@ index f4c75fb..f8dee5f 100755
 -OR_EXEC=${OR_BIN:-'/usr/local/openresty-debug/bin/openresty'}
 -OR_VER=$(openresty -v 2>&1 | awk -F '/' '{print $2}' | awk -F '.' '{print $1 * 100 + $2}')
 -LUA_VERSION=$(lua -v 2>&1| grep -E -o  "Lua [0-9]+.[0-9]+")
-+ROOT=/usr/local/apisix-unofficial-release
++ROOT=/usr/local/apisix-unofficial-release/openresty
 +LUAJIT_BIN="$ROOT"/luajit/bin/luajit
  
 -if [[ -e $OR_EXEC && "$OR_VER" -ge 119 ]]; then
@@ -51,7 +51,7 @@ index 1d32c02..023d5e2 100644
  my $openssl_bin = $ENV{OPENSSL_BIN};
  if (! -x $openssl_bin) {
 -    $ENV{OPENSSL_BIN} = '/usr/local/openresty/openssl3/bin/openssl';
-+    $ENV{OPENSSL_BIN} = '/usr/local/apisix-unofficial-release/openssl3/bin/openssl';
++    $ENV{OPENSSL_BIN} = 'openssl';
      if (! -x $ENV{OPENSSL_BIN}) {
          plan(skip_all => "openssl3 not installed");
      }

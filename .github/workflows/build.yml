@@ -8,17 +8,21 @@ on:
   workflow_dispatch:
 
 env:
+  PREFIX: /usr/local/apisix-unofficial-release
   # openresty
   OPENRESTY_VERSION: 1.27.1.1
-  OPENRESTY_PREFIX: /usr/local/apisix-unofficial-release
-  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I/usr/local/apisix-unofficial-release/zlib/include -I/usr/local/apisix-unofficial-release/pcre2/include -I/usr/local/apisix-unofficial-release/openssl3/include
-  OPENRESTY_LD_OPT: -Wl,-rpath,/usr/local/apisix-unofficial-release/luajit/lib:/usr/local/apisix-unofficial-release/zlib/lib:/usr/local/apisix-unofficial-release/pcre2/lib:/usr/local/apisix-unofficial-release/openssl3/lib -L/usr/local/apisix-unofficial-release/zlib/lib -L/usr/local/apisix-unofficial-release/pcre2/lib -L/usr/local/apisix-unofficial-release/openssl3/lib
+  OPENRESTY_PREFIX: ${{ env.PREFIX }}/openresty
+  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I${{ env.PREFIX }}/zlib/include -I${{ env.PREFIX }}/pcre2/include -I${{ env.PREFIX }}/openssl3/include
+  OPENRESTY_LD_OPT: -Wl,-rpath,${{ env.PREFIX }}/luajit/lib:${{ env.PREFIX }}/zlib/lib:${{ env.PREFIX }}/pcre2/lib:${{ env.PREFIX }}/openssl3/lib -L${{ env.PREFIX }}/zlib/lib -L${{ env.PREFIX }}/pcre2/lib -L${{ env.PREFIX }}/openssl3/lib
   OPENRESTY_LUAJIT_XCFLAGS: '-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
   # lua module
-  LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
   LUA_RESTY_EVENTS_MODULE_VERSION: 0.3.1
+  NGX_MULTI_UPSTREAM_MODULE_VERSION: 1.3.1
+  APISIX_NGINX_MODULE_VERSION: 1.18.0
+  LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
+  LUA_RESTY_LIMIT_TRAFFIC_VERSION: v1.0.0
   # luarocks
-  LUAROCKS_PREFIX: /usr/local/apisix-unofficial-release/luarocks
+  LUAROCKS_PREFIX: ${{ env.PREFIX }}/luarocks
   LUAROCKS_VERSION: 3.11.1
   # apisix
   APISIX_VERSION: master
@@ -36,7 +40,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            /usr/local/apisix-unofficial-release
+            ${{ env.PREFIX }}
           key: ${{ runner.os }}-openresty-cache
       - name: Set up apt repository for openresty
         if: steps.restore-openresty.outputs.cache-hit != 'true'
@@ -53,36 +57,48 @@ jobs:
             openresty-zlib openresty-zlib-dev \
             openresty-pcre openresty-pcre-dev \
             libyaml-0-2 libyaml-dev
-          sudo mkdir -p $OPENRESTY_PREFIX
-          sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX
-          sudo cp -r /usr/local/openresty/zlib $OPENRESTY_PREFIX
-          sudo cp -r /usr/local/openresty/pcre $OPENRESTY_PREFIX
-          sudo cp -r /usr/local/openresty/pcre2 $OPENRESTY_PREFIX
-          sudo cp -r /usr/local/openresty/openssl3 $OPENRESTY_PREFIX
-          mkdir -p $OPENRESTY_PREFIX/libyaml
-          mkdir -p $OPENRESTY_PREFIX/libyaml/lib
-          mkdir -p $OPENRESTY_PREFIX/libyaml/include
-          sudo chown -R $(id -u):$(id -g) $OPENRESTY_PREFIX/libyaml
-          sudo cp /usr/lib/x86_64-linux-gnu/libyaml* $OPENRESTY_PREFIX/libyaml/lib
-          sudo cp /usr/include/yaml* $OPENRESTY_PREFIX/libyaml/include
+          sudo mkdir -p $PREFIX
+          sudo chown $(id -u):$(id -g) $PREFIX
+          sudo cp -r /usr/local/openresty/zlib $PREFIX
+          sudo cp -r /usr/local/openresty/pcre $PREFIX
+          sudo cp -r /usr/local/openresty/pcre2 $PREFIX
+          sudo cp -r /usr/local/openresty/openssl3 $PREFIX
+          mkdir -p $PREFIX/libyaml
+          mkdir -p $PREFIX/libyaml/lib
+          mkdir -p $PREFIX/libyaml/include
+          sudo chown $(id -u):$(id -g) $PREFIX/libyaml
+          sudo cp /usr/lib/x86_64-linux-gnu/libyaml* $PREFIX/libyaml/lib
+          sudo cp /usr/include/yaml* $PREFIX/libyaml/include
       - name: Download module
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
-          sudo chown -R $(id -u):$(id -g) /usr/local/src/
+          sudo chown $(id -u):$(id -g) /usr/local/src/
           cd /usr/local/src/
-          git clone --depth=1 -b ${LUA_VAR_NGINX_MODULE_VERSION} https://github.com/api7/lua-var-nginx-module lua-var-nginx-module-${LUA_VAR_NGINX_MODULE_VERSION}
           git clone --depth=1 -b ${LUA_RESTY_EVENTS_MODULE_VERSION} https://github.com/Kong/lua-resty-events.git lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}
+          git clone --depth=1 -b ${NGX_MULTI_UPSTREAM_MODULE_VERSION} https://github.com/api7/ngx_multi_upstream_module.git ngx_multi_upstream_module-${NGX_MULTI_UPSTREAM_MODULE_VERSION}
+          git clone --depth=1 -b ${APISIX_NGINX_MODULE_VERSION} https://github.com/api7/apisix-nginx-module.git apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}
+          git clone --depth=1 -b ${LUA_VAR_NGINX_MODULE_VERSION} https://github.com/api7/lua-var-nginx-module lua-var-nginx-module-${LUA_VAR_NGINX_MODULE_VERSION}
+          git clone --depth=1 -b ${LUA_RESTY_LIMIT_TRAFFIC_VERSION} https://github.com/api7/lua-resty-limit-traffic lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION}
       - name: Download openresty and build
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           wget --no-check-certificate https://openresty.org/download/openresty-$OPENRESTY_VERSION.tar.gz
           tar -zxvpf openresty-$OPENRESTY_VERSION.tar.gz -C /usr/local/src/ > /dev/null
+          cd /usr/local/src/ngx_multi_upstream_module-${NGX_MULTI_UPSTREAM_MODULE_VERSION}
+          ./patch.sh /usr/local/src/openresty-${OPENRESTY_VERSION}
+          cd /usr/local/src/apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/patch
+          ./patch.sh /usr/local/src/openresty-${OPENRESTY_VERSION}
+          cp /usr/local/src/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION} /usr/local/src/openresty-${OPENRESTY_VERSION}/bundle/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION}
           cd /usr/local/src/openresty-$OPENRESTY_VERSION || exit 1
           ./configure \
             --prefix="$OPENRESTY_PREFIX" \
             --with-cc-opt="$OPENRESTY_CC_OPT" \
             --with-ld-opt="$OPENRESTY_LD_OPT" \
             --with-luajit-xcflags="$OPENRESTY_LUAJIT_XCFLAGS" \
+            --add-module=../apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION} \
+            --add-module=../apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/src/stream \
+            --add-module=../apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/src/meta \
+            --add-module=../ngx_multi_upstream_module-${NGX_MULTI_UPSTREAM_MODULE_VERSION} \
             --add-module=../lua-var-nginx-module-$LUA_VAR_NGINX_MODULE_VERSION \
             --add-module=../lua-resty-events-$LUA_RESTY_EVENTS_MODULE_VERSION \
             --with-poll_module \
@@ -117,6 +133,7 @@ jobs:
           make -j`nproc`
           make install
           cp -r /usr/local/src/lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}/lualib/resty/events $OPENRESTY_PREFIX/lualib/resty/
+          cp -r /usr/local/src/apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/lib/resty/events $OPENRESTY_PREFIX/lualib/resty/
       - name: Build from luarocks source and install
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
@@ -124,29 +141,29 @@ jobs:
           mkdir /usr/local/src/luarocks
           tar -zxvpf v$LUAROCKS_VERSION.tar.gz -C /usr/local/src/luarocks > /dev/null
           cd /usr/local/src/luarocks/luarocks-$LUAROCKS_VERSION
-          ./configure --prefix=/usr/local/apisix-unofficial-release/luarocks --with-lua=/usr/local/apisix-unofficial-release/luajit/
+          ./configure --prefix=$LUAROCKS_PREFIX --with-lua=$OPENRESTY_PREFIX/luajit/
           make
           make install
-          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_LIBDIR $OPENRESTY_PREFIX/openssl3/lib
-          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_INCDIR $OPENRESTY_PREFIX/openssl3/include
-          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_LIBDIR $OPENRESTY_PREFIX/pcre/lib/
-          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $OPENRESTY_PREFIX/pcre/include/
-          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_LIBDIR $OPENRESTY_PREFIX/libyaml/lib/
-          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $OPENRESTY_PREFIX/libyaml/include/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_LIBDIR $PREFIX/openssl3/lib
+          $LUAROCKS_PREFIX/bin/luarocks config variables.OPENSSL_INCDIR $PREFIX/openssl3/include
+          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_LIBDIR $PREFIX/pcre/lib/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.PCRE_INCDIR $PREFIX/pcre/include/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_LIBDIR $PREFIX/libyaml/lib/
+          $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $PREFIX/libyaml/include/
       - name: Save Openresty Cache
         id: save-openresty
         uses: actions/cache/save@v4
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         with:
           path: |
-            /usr/local/apisix-unofficial-release
+            ${{ env.PREFIX }}
           key: ${{ runner.os }}-openresty-cache
       - name: Checkout patch
         uses: actions/checkout@v4
       - name: Download apisix and install
         run: |
           PATCH_FILE=$(realpath apisix-unofficial-release.patch)
-          cd $OPENRESTY_PREFIX
+          cd $PREFIX
           git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
           cd apisix-${APISIX_VERSION}
           patch -p1 < $PATCH_FILE
@@ -155,12 +172,12 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            /usr/local/apisix-unofficial-release/apisix-${{ env.APISIX_VERSION }}/deps
+            ${{ env.PREFIX }}/apisix-${{ env.APISIX_VERSION }}/deps
           key: ${{ runner.os }}-apisix-deps-cache
       - name: Download apisix deps
         if: steps.estore-apisix-deps.outputs.cache-hit != 'true'
         run: |
-          cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
+          cd $PREFIX/apisix-${APISIX_VERSION}
           $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
       - name: Save apisix deps
         id: save-apisix-deps
@@ -168,14 +185,14 @@ jobs:
         if: steps.restore-apisix-deps.outputs.cache-hit != 'true'
         with:
           path: |
-            /usr/local/apisix-unofficial-release/apisix-${{ env.APISIX_VERSION }}/deps
+            ${{ env.PREFIX }}/apisix-${{ env.APISIX_VERSION }}/deps
           key: ${{ runner.os }}-apisix-deps-cache
       - name: Build deb package
         run: |
           mkdir -p pkg/usr/local
           mkdir -p pkg/DEBIAN
           sudo chown -R $(id -u):$(id -g) pkg
-          cp -r $OPENRESTY_PREFIX pkg/usr/local
+          cp -r $PREFIX pkg/usr/local
           cat << EOF > pkg/DEBIAN/control
           Package: apisix-unofficial-release
           Version: 0.1
@@ -192,7 +209,7 @@ jobs:
 
   test:
     needs: [build]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     name: test
     steps:
       - name: Download artifact
@@ -202,22 +219,17 @@ jobs:
           sudo dpkg -i artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/apisix-unofficial-release_0.1_amd64.deb
       - name: Install packages
         run: |
-          sudo apt install cpanminus
-          ETCD_VERSION='3.5.4'
-          wget https://github.com/etcd-io/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
-          tar -xvf etcd-v${ETCD_VERSION}-linux-amd64.tar.gz
-          cd etcd-v${ETCD_VERSION}-linux-amd64
-          sudo cp -a etcd etcdctl /usr/bin/
-          sudo systemd-run --unit=etcd etcd
+          sudo apt install cpanminus etcd-server etcd-client
+          sudo systemctl start etcd
       - name: Install test-nginx and run test
         run: |
-          cd $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}
+          cd $PREFIX/apisix-${APISIX_VERSION}
           sudo cpanm --notest Test::Nginx IPC::Run > build.log 2>&1 || (cat build.log && exit 1)
           git submodule update --init --recursive t/toolkit/
           git clone https://github.com/openresty/test-nginx.git
-          export PATH=/usr/local/apisix-unofficial-release/bin:$PATH
+          export PATH=$PREFIX/openresty/bin:$PATH
           export PERL5LIB=.:$PERL5LIB
-          export TEST_NGINX_BINARY=/usr/local/apisix-unofficial-release/bin/openresty
-          $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
-          $OPENRESTY_PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
+          export TEST_NGINX_BINARY=$PREFIX/openresty/bin/openresty
+          $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
+          $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
           prove -Itest-nginx/lib -r t/plugin/hmac-auth.*
