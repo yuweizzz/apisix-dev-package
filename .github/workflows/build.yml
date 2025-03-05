@@ -8,12 +8,12 @@ on:
   workflow_dispatch:
 
 env:
-  PREFIX: /usr/local/apisix-unofficial-release
+  PREFIX: ${{ vars.PREFIX }}
   # openresty
   OPENRESTY_VERSION: 1.27.1.1
-  OPENRESTY_PREFIX: ${{ env.PREFIX }}/openresty
-  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I${{ env.PREFIX }}/zlib/include -I${{ env.PREFIX }}/pcre2/include -I${{ env.PREFIX }}/openssl3/include
-  OPENRESTY_LD_OPT: -Wl,-rpath,${{ env.PREFIX }}/luajit/lib:${{ env.PREFIX }}/zlib/lib:${{ env.PREFIX }}/pcre2/lib:${{ env.PREFIX }}/openssl3/lib -L${{ env.PREFIX }}/zlib/lib -L${{ env.PREFIX }}/pcre2/lib -L${{ env.PREFIX }}/openssl3/lib
+  OPENRESTY_PREFIX: ${{ vars.PREFIX }}/openresty
+  OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I${{ vars.PREFIX }}/zlib/include -I${{ vars.PREFIX }}/pcre2/include -I${{ vars.PREFIX }}/openssl3/include
+  OPENRESTY_LD_OPT: -Wl,-rpath,${{ vars.PREFIX }}/luajit/lib:${{ vars.PREFIX }}/zlib/lib:${{ vars.PREFIX }}/pcre2/lib:${{ vars.PREFIX }}/openssl3/lib -L${{ vars.PREFIX }}/zlib/lib -L${{ vars.PREFIX }}/pcre2/lib -L${{ vars.PREFIX }}/openssl3/lib
   OPENRESTY_LUAJIT_XCFLAGS: '-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
   # lua module
   LUA_RESTY_EVENTS_MODULE_VERSION: 0.3.1
@@ -22,7 +22,7 @@ env:
   LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
   LUA_RESTY_LIMIT_TRAFFIC_VERSION: v1.0.0
   # luarocks
-  LUAROCKS_PREFIX: ${{ env.PREFIX }}/luarocks
+  LUAROCKS_PREFIX: ${{ vars.PREFIX }}/luarocks
   LUAROCKS_VERSION: 3.11.1
   # apisix
   APISIX_VERSION: master
@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            ${{ env.PREFIX }}
+            ${{ vars.PREFIX }}
           key: ${{ runner.os }}-openresty-cache
       - name: Set up apt repository for openresty
         if: steps.restore-openresty.outputs.cache-hit != 'true'
@@ -88,7 +88,7 @@ jobs:
           ./patch.sh /usr/local/src/openresty-${OPENRESTY_VERSION}
           cd /usr/local/src/apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/patch
           ./patch.sh /usr/local/src/openresty-${OPENRESTY_VERSION}
-          cp /usr/local/src/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION} /usr/local/src/openresty-${OPENRESTY_VERSION}/bundle/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION}
+          cp -r /usr/local/src/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION} /usr/local/src/openresty-${OPENRESTY_VERSION}/bundle/lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION}
           cd /usr/local/src/openresty-$OPENRESTY_VERSION || exit 1
           ./configure \
             --prefix="$OPENRESTY_PREFIX" \
@@ -133,7 +133,7 @@ jobs:
           make -j`nproc`
           make install
           cp -r /usr/local/src/lua-resty-events-${LUA_RESTY_EVENTS_MODULE_VERSION}/lualib/resty/events $OPENRESTY_PREFIX/lualib/resty/
-          cp -r /usr/local/src/apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/lib/resty/events $OPENRESTY_PREFIX/lualib/resty/
+          cp -r /usr/local/src/apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}/lib/resty/apisix $OPENRESTY_PREFIX/lualib/resty/
       - name: Build from luarocks source and install
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
@@ -156,7 +156,7 @@ jobs:
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         with:
           path: |
-            ${{ env.PREFIX }}
+            ${{ vars.PREFIX }}
           key: ${{ runner.os }}-openresty-cache
       - name: Checkout patch
         uses: actions/checkout@v4
@@ -172,7 +172,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            ${{ env.PREFIX }}/apisix-${{ env.APISIX_VERSION }}/deps
+            ${{ vars.PREFIX }}/apisix-${{ vars.APISIX_VERSION }}/deps
           key: ${{ runner.os }}-apisix-deps-cache
       - name: Download apisix deps
         if: steps.estore-apisix-deps.outputs.cache-hit != 'true'
@@ -185,7 +185,7 @@ jobs:
         if: steps.restore-apisix-deps.outputs.cache-hit != 'true'
         with:
           path: |
-            ${{ env.PREFIX }}/apisix-${{ env.APISIX_VERSION }}/deps
+            ${{ vars.PREFIX }}/apisix-${{ vars.APISIX_VERSION }}/deps
           key: ${{ runner.os }}-apisix-deps-cache
       - name: Build deb package
         run: |
@@ -229,7 +229,7 @@ jobs:
           git clone https://github.com/openresty/test-nginx.git
           export PATH=$PREFIX/openresty/bin:$PATH
           export PERL5LIB=.:$PERL5LIB
-          export TEST_NGINX_BINARY=$PREFIX/openresty/bin/openresty
+          export TEST_NGINX_BINARY=$PREFIX/openresty/nginx/sbin/nginx
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
           prove -Itest-nginx/lib -r t/plugin/hmac-auth.*

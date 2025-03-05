@@ -55,3 +55,14 @@ index 1d32c02..023d5e2 100644
      if (! -x $ENV{OPENSSL_BIN}) {
          plan(skip_all => "openssl3 not installed");
      }
+diff --git a/t/APISIX.pm b/t/APISIX.pm
+index 50f7cfae..3f84714f 100644
+--- a/t/APISIX.pm
++++ b/t/APISIX.pm
+@@ -226,7 +226,6 @@ if ($version =~ m/\/apisix-nginx-module/) {
+     $a6_ngx_directives = <<_EOC_;
+     apisix_delay_client_max_body_check on;
+     apisix_mirror_on_demand on;
+-    wasm_vm wasmtime;
+ _EOC_
+ }
