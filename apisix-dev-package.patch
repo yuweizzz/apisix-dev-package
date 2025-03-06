@@ -12,11 +12,15 @@ index 079691f..d6c4446 100755
                    .. apisix_home .. "/deps/lib/lua/5.1/?.so;"
  local pkg_path_deps = apisix_home .. "/deps/share/lua/5.1/?.lua;"
 diff --git a/bin/apisix b/bin/apisix
-index f4c75fb..f8dee5f 100755
+index f4c75fbb..f10a7208 100755
 --- a/bin/apisix
 +++ b/bin/apisix
-@@ -28,21 +28,9 @@ else
-     APISIX_LUA=/usr/local/apisix/apisix/cli/apisix.lua
+@@ -25,24 +25,12 @@ elif [ -s '/usr/local/share/lua/5.1/apisix/cli/apisix.lua' ]; then
+     APISIX_LUA=/usr/local/share/lua/5.1/apisix/cli/apisix.lua
+ else
+     # install via official rpm or docker
+-    APISIX_LUA=/usr/local/apisix/apisix/cli/apisix.lua
++    APISIX_LUA=/usr/local/apisix-dev/apisix-master/apisix/cli/apisix.lua
  fi
  
 -# find the openresty
