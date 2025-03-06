@@ -1,4 +1,4 @@
-name: Build
+name: CI
 
 on:
   push:
@@ -31,13 +31,14 @@ env:
 
 jobs:
   build:
+    # glibc: 2.31
     runs-on: ubuntu-20.04
     name: build
     steps:
-      - name: Change owner
+      - name: Change directory owner
         run: |
           sudo chown $(id -u):$(id -g) /usr/local/
-      - name: Restore Openresty Cache
+      - name: Restore openresty cache
         id: restore-openresty
         uses: actions/cache/restore@v4
         with:
@@ -71,7 +72,7 @@ jobs:
           sudo chown $(id -u):$(id -g) $PREFIX/libyaml
           sudo cp /usr/lib/x86_64-linux-gnu/libyaml* $PREFIX/libyaml/lib
           sudo cp /usr/include/yaml* $PREFIX/libyaml/include
-      - name: Download module
+      - name: Download lua module
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           sudo chown $(id -u):$(id -g) /usr/local/src/
@@ -81,7 +82,7 @@ jobs:
           git clone --depth=1 -b ${APISIX_NGINX_MODULE_VERSION} https://github.com/api7/apisix-nginx-module.git apisix-nginx-module-${APISIX_NGINX_MODULE_VERSION}
           git clone --depth=1 -b ${LUA_VAR_NGINX_MODULE_VERSION} https://github.com/api7/lua-var-nginx-module lua-var-nginx-module-${LUA_VAR_NGINX_MODULE_VERSION}
           git clone --depth=1 -b ${LUA_RESTY_LIMIT_TRAFFIC_VERSION} https://github.com/api7/lua-resty-limit-traffic lua-resty-limit-traffic-${LUA_RESTY_LIMIT_TRAFFIC_VERSION}
-      - name: Download openresty and build
+      - name: Download openresty source and build
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         run: |
           wget --no-check-certificate https://openresty.org/download/openresty-$OPENRESTY_VERSION.tar.gz
@@ -164,7 +165,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Download apisix and install
         run: |
-          PATCH_FILE=$(realpath apisix-unofficial-release.patch)
+          PATCH_FILE=$(realpath apisix-dev-package.patch)
           cd $PREFIX
           git clone --depth=1 -b ${APISIX_VERSION} https://github.com/apache/apisix.git apisix-${APISIX_VERSION}
           cd apisix-${APISIX_VERSION}
@@ -196,13 +197,13 @@ jobs:
           sudo chown -R $(id -u):$(id -g) pkg
           cp -r $PREFIX pkg/usr/local
           cat << EOF > pkg/DEBIAN/control
-          Package: apisix-unofficial-release
-          Version: 0.1
+          Package: apisix-dev
+          Version: ${{ github.ref_name }}
           Maintainer: yuweizzz
           Architecture: amd64
-          Description: apisix unofficial release
+          Description: APISIX development environment package
           EOF
-          dpkg-deb -Z xz --build pkg apisix-unofficial-release_0.1_amd64.deb
+          dpkg-deb -Z xz --build pkg apisix-dev_${{ github.ref_name }}_amd64.deb
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -218,7 +219,7 @@ jobs:
         uses: actions/download-artifact@v4
       - name: Install deb package
         run: |
-          sudo dpkg -i artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/apisix-unofficial-release_0.1_amd64.deb
+          sudo dpkg -i artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/apisix-dev_${{ github.ref_name }}_amd64.deb
       - name: Install packages
         run: |
           sudo apt install cpanminus etcd-server etcd-client
@@ -233,8 +234,8 @@ jobs:
           export PERL5LIB=.:$PERL5LIB
           export TEST_NGINX_BINARY=$PREFIX/openresty/nginx/sbin/nginx
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
-          $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
-          prove -Itest-nginx/lib -r t/plugin/hmac-auth.*
+          $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd
+          prove -Itest-nginx/lib -r t/core/*.t
 
   release:
     needs: [build, test]

@@ -7,7 +7,7 @@ index 079691f..d6c4446 100755
  end
  
 -local apisix_home = "/usr/local/apisix"
-+local apisix_home = "/usr/local/apisix-unofficial-release/apisix-master"
++local apisix_home = "/usr/local/apisix-dev/apisix-master"
  local pkg_cpath = apisix_home .. "/deps/lib64/lua/5.1/?.so;"
                    .. apisix_home .. "/deps/lib/lua/5.1/?.so;"
  local pkg_path_deps = apisix_home .. "/deps/share/lua/5.1/?.lua;"
@@ -24,7 +24,7 @@ index f4c75fb..f8dee5f 100755
 -OR_EXEC=${OR_BIN:-'/usr/local/openresty-debug/bin/openresty'}
 -OR_VER=$(openresty -v 2>&1 | awk -F '/' '{print $2}' | awk -F '.' '{print $1 * 100 + $2}')
 -LUA_VERSION=$(lua -v 2>&1| grep -E -o  "Lua [0-9]+.[0-9]+")
-+ROOT=/usr/local/apisix-unofficial-release/openresty
++ROOT=/usr/local/apisix-dev/openresty
 +LUAJIT_BIN="$ROOT"/luajit/bin/luajit
  
 -if [[ -e $OR_EXEC && "$OR_VER" -ge 119 ]]; then
@@ -42,19 +42,6 @@ index f4c75fb..f8dee5f 100755
 +# use the luajit of openresty
 +echo "$LUAJIT_BIN $APISIX_LUA $*"
 +exec $LUAJIT_BIN $APISIX_LUA $*
-diff --git a/t/plugin/ocsp-stapling.t b/t/plugin/ocsp-stapling.t
-index 1d32c02..023d5e2 100644
---- a/t/plugin/ocsp-stapling.t
-+++ b/t/plugin/ocsp-stapling.t
-@@ -25,7 +25,7 @@ no_shuffle();
- 
- my $openssl_bin = $ENV{OPENSSL_BIN};
- if (! -x $openssl_bin) {
--    $ENV{OPENSSL_BIN} = '/usr/local/openresty/openssl3/bin/openssl';
-+    $ENV{OPENSSL_BIN} = 'openssl';
-     if (! -x $ENV{OPENSSL_BIN}) {
-         plan(skip_all => "openssl3 not installed");
-     }
 diff --git a/t/APISIX.pm b/t/APISIX.pm
 index 50f7cfae..3f84714f 100644
 --- a/t/APISIX.pm
