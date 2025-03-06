@@ -3,6 +3,8 @@ name: Build
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -233,3 +235,22 @@ jobs:
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd          
           prove -Itest-nginx/lib -r t/plugin/hmac-auth.*
+
+  release:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          files: artifact-${{ github.ref_name }}-${{ runner.os }}-amd64/*.deb
+          generate_release_notes: true
