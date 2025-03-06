@@ -198,7 +198,7 @@ jobs:
           cp -r $PREFIX pkg/usr/local
           cat << EOF > pkg/DEBIAN/control
           Package: apisix-dev
-          Version: ${{ github.ref_name }}
+          Version: 0.1~git-${{ github.ref_name }}
           Maintainer: yuweizzz
           Architecture: amd64
           Description: APISIX development environment package
@@ -235,7 +235,9 @@ jobs:
           export TEST_NGINX_BINARY=$PREFIX/openresty/nginx/sbin/nginx
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init
           $PREFIX/apisix-${APISIX_VERSION}/bin/apisix init_etcd
-          prove -Itest-nginx/lib -r t/core/*.t
+          # no component required
+          prove -I test-nginx/lib -r t/plugin/cors*
+          prove -I test-nginx/lib -r t/plugin/gzip*
 
   release:
     needs: [build, test]
