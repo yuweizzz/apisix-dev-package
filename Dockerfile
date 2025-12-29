@@ -1,18 +1,13 @@
 FROM debian:trixie-slim
 
 COPY apisix-dev_amd64.deb /tmp
+COPY entrypoint.sh /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client systemd \
+    && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client \
     && dpkg -i /tmp/apisix-dev_amd64.deb \
-    && systemctl start etcd \
     && rm -rf /tmp/apisix-dev_amd64.deb /var/lib/apt/lists/*
 
-WORKDIR /usr/local/apisix-dev/apisix-master/
-
-RUN bin/apisix init && bin/apisix init_etcd
-
-ENTRYPOINT ["/usr/local/apisix-dev/apisix-master/bin/apisix"]
+ENTRYPOINT ["sh", "-c", "/app/entrypoint.sh"]
 
 EXPOSE 9080 9443 9180
-CMD ["start"]
