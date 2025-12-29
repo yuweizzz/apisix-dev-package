@@ -3,7 +3,7 @@ FROM debian:trixie-slim
 COPY apisix-dev_amd64.deb /tmp
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client \
+    && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client systemd \
     && dpkg -i /tmp/apisix-dev_amd64.deb \
     && systemctl start etcd \
     && rm -rf /tmp/apisix-dev_amd64.deb /var/lib/apt/lists/*
