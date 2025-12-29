@@ -33,7 +33,7 @@ env:
 jobs:
   build:
     # glibc: 2.31
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     name: build
     steps:
       - name: Change directory owner
@@ -260,9 +260,9 @@ jobs:
           generate_release_notes: true
 
   docker:
-    # needs: [release]
+    needs: [build]
     runs-on: ubuntu-latest
-    if: startsWith(github.event.ref, 'refs/tags/v')
+    # if: startsWith(github.event.ref, 'refs/tags/v')
     permissions:
       contents: write
 
