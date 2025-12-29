@@ -26,7 +26,7 @@ env:
   LUA_RESTY_LIMIT_TRAFFIC_VERSION: v1.0.0
   # luarocks
   LUAROCKS_PREFIX: ${{ vars.PREFIX }}/luarocks
-  LUAROCKS_VERSION: 3.11.1
+  LUAROCKS_VERSION: 3.12.0
   # apisix
   APISIX_VERSION: master
 
