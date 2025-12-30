@@ -1,4 +1,4 @@
-FROM debian:trixie-slim
+FROM debian:trixie
 
 COPY apisix-dev_amd64.deb /tmp
 COPY entrypoint.sh /app/
