@@ -6,7 +6,8 @@ COPY entrypoint.sh /app/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client \
     && dpkg -i /tmp/apisix-dev_amd64.deb \
-    && rm -rf /tmp/apisix-dev_amd64.deb /var/lib/apt/lists/*
+    && rm -rf /tmp/apisix-dev_amd64.deb /var/lib/apt/lists/* \
+    && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["sh", "-c", "/app/entrypoint.sh"]
 
