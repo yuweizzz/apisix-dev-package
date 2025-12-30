@@ -1,7 +1,7 @@
 FROM debian:trixie-slim
 
 COPY apisix-dev_amd64.deb /tmp
-COPY entrypoint.sh /app
+COPY entrypoint.sh /app/
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends cpanminus etcd-server etcd-client \
