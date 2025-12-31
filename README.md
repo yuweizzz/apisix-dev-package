@@ -6,5 +6,6 @@ APISIX development environment package, used for testing plugins.
 
 ```bash
 docker pull ghcr.io/yuweizzz/apisix-dev-package:latest
-docker run -d ghcr.io/yuweizzz/apisix-dev-package:latest | xargs -I {} docker exec {} bin/apisix start
+# use init option
+docker run --init -d ghcr.io/yuweizzz/apisix-dev-package:latest | xargs -I {} docker exec {} bin/apisix start
 ```
