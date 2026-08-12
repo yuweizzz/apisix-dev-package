@@ -55,13 +55,13 @@ jobs:
           sudo apt-get update
       - name: Install openresty lib package and dev package
         if: steps.restore-openresty.outputs.cache-hit != 'true'
-        # lua-resty-saml: libxslt-dev, libxslt
+        # lua-resty-saml: libxslt1-dev, libxslt1.1
         run: |
           sudo apt-get -y install openresty-openssl3 openresty-openssl3-dev \
             openresty-pcre2 openresty-pcre2-dev \
             openresty-zlib openresty-zlib-dev \
             openresty-pcre openresty-pcre-dev \
-            libyaml-0-2 libyaml-dev libxslt-dev libxslt
+            libyaml-0-2 libyaml-dev libxslt1-dev libxslt1.1
           sudo mkdir -p $PREFIX
           sudo chown $(id -u):$(id -g) $PREFIX
           sudo cp -r /usr/local/openresty/zlib $PREFIX
@@ -181,13 +181,13 @@ jobs:
           key: ${{ runner.os }}-apisix-deps-cache
       - name: Download apisix deps
         if: steps.estore-apisix-deps.outputs.cache-hit != 'true'
-        # disable lua-resty-saml
         # lua-resty-saml: OPENSSL_DIR=$PREFIX/openssl3
+        # lua-resty-saml: install zlib dev
         run: |
           cd $PREFIX/apisix-${APISIX_VERSION}
           $LUAROCKS_PREFIX/bin/luarocks config
-          sed -i "/lua-resty-saml/d" apisix-master-0.rockspec
-          $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps
+          sudo cp -r $PREFIX/zlib/include/*.h /usr/include/
+          $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps OPENSSL_DIR=$PREFIX/openssl3
       - name: Save apisix deps
         id: save-apisix-deps
         uses: actions/cache/save@v5
