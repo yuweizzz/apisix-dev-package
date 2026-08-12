@@ -13,7 +13,7 @@ env:
   # PREFIX: /usr/local/apisix-dev
   PREFIX: ${{ vars.PREFIX }}
   # openresty
-  OPENRESTY_VERSION: 1.27.1.1
+  OPENRESTY_VERSION: 1.29.2.4
   OPENRESTY_PREFIX: ${{ vars.PREFIX }}/openresty
   OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I${{ vars.PREFIX }}/zlib/include -I${{ vars.PREFIX }}/pcre2/include -I${{ vars.PREFIX }}/openssl3/include
   OPENRESTY_LD_OPT: -Wl,-rpath,${{ vars.PREFIX }}/luajit/lib:${{ vars.PREFIX }}/zlib/lib:${{ vars.PREFIX }}/pcre2/lib:${{ vars.PREFIX }}/openssl3/lib -L${{ vars.PREFIX }}/zlib/lib -L${{ vars.PREFIX }}/pcre2/lib -L${{ vars.PREFIX }}/openssl3/lib
@@ -21,9 +21,9 @@ env:
   # lua module
   LUA_RESTY_EVENTS_MODULE_VERSION: 0.3.1
   NGX_MULTI_UPSTREAM_MODULE_VERSION: 1.3.1
-  APISIX_NGINX_MODULE_VERSION: 1.18.0
+  APISIX_NGINX_MODULE_VERSION: 1.19.9
   LUA_VAR_NGINX_MODULE_VERSION: v0.5.3
-  LUA_RESTY_LIMIT_TRAFFIC_VERSION: v1.0.0
+  LUA_RESTY_LIMIT_TRAFFIC_VERSION: v1.2.0
   # luarocks
   LUAROCKS_PREFIX: ${{ vars.PREFIX }}/luarocks
   LUAROCKS_VERSION: 3.12.0
