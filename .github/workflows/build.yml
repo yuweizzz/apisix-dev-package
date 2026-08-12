@@ -13,7 +13,7 @@ env:
   # PREFIX: /usr/local/apisix-dev
   PREFIX: ${{ vars.PREFIX }}
   # openresty
-  OPENRESTY_VERSION: 1.29.2.4
+  OPENRESTY_VERSION: 1.29.2.1
   OPENRESTY_PREFIX: ${{ vars.PREFIX }}/openresty
   OPENRESTY_CC_OPT: -O2 -DNGX_LUA_ABORT_AT_PANIC -I${{ vars.PREFIX }}/zlib/include -I${{ vars.PREFIX }}/pcre2/include -I${{ vars.PREFIX }}/openssl3/include
   OPENRESTY_LD_OPT: -Wl,-rpath,${{ vars.PREFIX }}/luajit/lib:${{ vars.PREFIX }}/zlib/lib:${{ vars.PREFIX }}/pcre2/lib:${{ vars.PREFIX }}/openssl3/lib -L${{ vars.PREFIX }}/zlib/lib -L${{ vars.PREFIX }}/pcre2/lib -L${{ vars.PREFIX }}/openssl3/lib
