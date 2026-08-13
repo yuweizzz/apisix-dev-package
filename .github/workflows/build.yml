@@ -161,7 +161,7 @@ jobs:
           $LUAROCKS_PREFIX/bin/luarocks config variables.YAML_INCDIR $PREFIX/libyaml/include/
       - name: Save Openresty Cache
         id: save-openresty
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.restore-openresty.outputs.cache-hit != 'true'
         with:
           path: |
@@ -193,7 +193,7 @@ jobs:
           $LUAROCKS_PREFIX/bin/luarocks install apisix-master-0.rockspec --tree deps --only-deps OPENSSL_DIR=$PREFIX/openssl3
       - name: Save apisix deps
         id: save-apisix-deps
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.restore-apisix-deps.outputs.cache-hit != 'true'
         with:
           path: |
